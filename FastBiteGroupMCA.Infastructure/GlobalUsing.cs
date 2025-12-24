@@ -1,0 +1,11 @@
+﻿global using AutoMapper;
+global using FastBiteGroupMCA.Application.IServices;
+global using FastBiteGroupMCA.Application.Response;
+global using FastBiteGroupMCA.Domain.Abstractions.Repository.EFCore;
+global using FastBiteGroupMCA.Domain.Entities;
+global using FastBiteGroupMCA.Domain.Entities.Identity;
+global using FastBiteGroupMCA.Domain.Enum;
+global using Microsoft.EntityFrameworkCore;
+global using FastBiteGroupMCA.Application.CurrentUserClaim;
+global using Microsoft.Extensions.Logging;
+global using FastBiteGroupMCA.Application.Extension;

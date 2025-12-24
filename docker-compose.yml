@@ -1,0 +1,105 @@
+services:
+  # ASP.NET Core 8.0 API Service
+  fastbite-api:
+    build:
+      context: .
+      dockerfile: FastBiteGroupMCA.API/Dockerfile
+      args:
+        PUBLISH_FOLDER: publish
+    container_name: fastbite-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Data Source=sqlserver,1433;Initial Catalog=FastBiteGroupMCA;User ID=sa;Password=MyPass@word123;Encrypt=True;Trust Server Certificate=True
+      - ConnectionStrings__Redis=redis:6379
+      - MongoDbSettings__ConnectionString=mongodb://root:mongopassword@mongodb:27017
+      - MongoDbSettings__DatabaseName=MyTeamsAppDB_NoSQL
+      - Jwt__Key=toitenltoiTenLA_LanLE_HOang_NamNay_20_nndieee_duit-yes-manto
+      - Jwt__Issuer=FastBiteGroupMCA
+      - Jwt__Audience=FastBiteGroupMCA-Users
+      - Jwt__ExpiryHours=7
+      - AppUrls__FrontendBaseUrl=http://localhost:3000
+      - App__BaseUrl=https://localhost:8081
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mongodb:
+        condition: service_started
+    networks:
+      - fastbite-network
+    volumes:
+      - ./Logs:/app/Logs
+    restart: unless-stopped
+
+  # SQL Server Service
+  sqlserver:
+    user: root
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: fastbite-sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=MyPass@word123
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - fastbite-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'MyPass@word123' -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: fastbite-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - fastbite-network
+    restart: unless-stopped
+
+  # MongoDB Service
+  mongodb:
+    image: mongo:7
+    container_name: fastbite-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=mongopassword
+      - MONGO_INITDB_DATABASE=MyTeamsAppDB_NoSQL
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - fastbite-network
+    restart: unless-stopped
+
+# Named volumes for data persistence
+volumes:
+  sqlserver_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+
+# Custom network for service communication
+networks:
+  fastbite-network:
+    driver: bridge
