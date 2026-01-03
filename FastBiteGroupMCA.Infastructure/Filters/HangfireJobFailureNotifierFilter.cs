@@ -22,14 +22,14 @@ namespace FastBiteGroupMCA.Infastructure.Filters
         {
             string? failureMessage = null;
 
-            // KỊCH BẢN 1: BẮT LỖI HỆ THỐNG (EXCEPTION)
+            
             if (context.Exception != null)
             {
                 var jobName = context.BackgroundJob.Job.Method.Name;
                 var errorMessage = context.Exception.InnerException?.Message ?? context.Exception.Message;
                 failureMessage = $"[Exception] Background Job '{jobName}' đã thất bại. Lỗi: {errorMessage}";
             }
-            // KỊCH BẢN 2: BẮT LỖI NGHIỆP VỤ (BUSINESS ERROR)
+            
             else if (context.Result is IApiResponse apiResponse && !apiResponse.Success)
             {
                 var jobName = context.BackgroundJob.Job.Method.Name;
@@ -37,7 +37,6 @@ namespace FastBiteGroupMCA.Infastructure.Filters
                 failureMessage = $"[Business Error] Background Job '{jobName}' đã trả về lỗi. Lỗi: {businessError}";
             }
 
-            // Nếu có bất kỳ loại lỗi nào, gửi thông báo
             if (failureMessage != null)
             {
                 try

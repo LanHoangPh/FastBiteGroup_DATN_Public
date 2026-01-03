@@ -1,102 +1,117 @@
 # FastBiteGroupMCA
 
-Welcome to the FastBiteGroupMCA Project!
+![.NET 8](https://img.shields.io/badge/.NET%208-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![SignalR](https://img.shields.io/badge/SignalR-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white)
+![LiveKit](https://img.shields.io/badge/LiveKit-3183F5?style=for-the-badge&logo=webrtc&logoColor=white)
 
-This repository represents a culmination of my efforts, passion, and expertise in software development—showcasing innovation, technical skills, and practical applications aimed at real-world solutions.
-
-## 🏆 Project Overview
-
-FastBiteGroupMCA is a [brief description of your project]. It offers [key benefits or solutions provided]. This project aims to [objective: automate tasks, address challenges, enhance productivity, etc.].
-
-### Key Features
-
-- 🚀 [Feature 1: e.g., Real-time processing, advanced AI algorithms, etc.]
-- 🌐 [Feature 2: e.g., Cross-platform support, multi-user interaction, etc.]
-- 🔒 [Feature 3: e.g., Secure authentication, data encryption, etc.]
-- 💡 [Feature 4: highlight any unique, innovative, or user-focused features]
-
-## 🎯 Why This Project Matters
-
-In today's fast-paced and evolving tech landscape, FastBiteGroupMCA addresses [specific problem/trend] with a robust, scalable, and user-friendly architecture. This signifies its potential to be adapted to businesses, individuals, or the global market. [Include any unique or innovative edge.]
-
-## 🚀 How I Built It
-
-### Tech Stack
-
-- **Frontend**: [Framework/Library, e.g., React, Angular, etc.]
-- **Backend**: [Framework/Technology, e.g., Node.js, Flask, Express, etc.]
-- **Database**: [Database used, e.g., MongoDB, PostgreSQL, etc.]
-- **Tools & Libraries**: [Any other tools like Docker, CI/CD services, etc.]
-
-This project showcases my expertise in [key skills used: full-stack development, data structures, algorithms, UX design, etc.] and my ability to develop scalable and efficient solutions.
-
-### Architecture Diagram
-
-[Include a visual representation of your application’s architecture, if applicable.]
-
-## 📑 Use Cases
-
-This project can be applied to:
-
-- [Specific use case 1]
-- [Specific use case 2]
-- [Specific use case 3]
-
-## 🛠 Installation and Usage
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/LanHoangPh/FastBiteGroup_DATN_Public.git
-   ```
-2. Navigate to the project directory and install dependencies:
-   ```bash
-   cd FastBiteGroup_DATN_Public
-   npm install
-   ```
-3. Start the application:
-   ```bash
-   npm start
-   ```
-4. Open the application at `http://localhost:3000`.
-
-For more detailed usage, see the [Documentation](link-to-documentation).
-
-## 🧩 Challenges and Learnings
-
-Developing this project allowed me to:
-
-- Enhance [skill 1].
-- Learn about [new technology/tool].
-- Solve [specific problem faced].
-
-[Share specific challenges you overcame and what you learned from them.]
-
-## 📈 Results and Impact
-
-Provide statistical or qualitative results illustrating the project's success, such as:
-
-- Improved [specific metric] by X%.
-- Reduced [time/cost/complexity] by Y%.
-- Received feedback from X users/stakeholders.
-
-## 🤝 Collaboration Opportunities
-
-I am always eager to learn from, or collaborate with, industry professionals. Here’s how you can contribute:
-
-- 💡 Suggest innovative ideas and features.
-- 🔎 Report bugs or request enhancements in [issue tracker link].
-- ⭐ Star this repository to show your support!
-
-## 👤 About Me
-
-Hello! I'm [Your Name], a [role or expertise, such as "Full-Stack Developer"] passionate about building impactful projects like FastBiteGroupMCA. My goal is to merge creativity and technology to drive meaningful solutions.
-
-You can view my [portfolio](link-to-your-portfolio) or connect with me on [LinkedIn](link-to-your-LinkedIn).
-
-## 📜 License
-
-This project is licensed under the [specific license] - see the [LICENSE](link-to-license-file) file for details.
+**FastBiteGroupMCA** is a high-performance, scalable **Social Collaboration Platform** designed to facilitate real-time communication and community management. Built with **.NET 8** and **Clean Architecture**, it demonstrates enterprise-grade patterns including real-time synchronization, background processing, and distributed infrastructure.
 
 ---
 
-✨ If this project excites you or you'd like to work with me, let's connect!
+## 🚀 Key Features
+
+### 💬 Real-Time Communication
+- **Instant Messaging**: WebSocket-based chat with real-time delivery status using **SignalR**.
+- **Video & Audio Calls**: High-quality video conferencing integrated via **LiveKit**.
+- **Presence Tracking**: Real-time user online/offline status monitoring using **Redis**.
+
+### 👥 Community & Group Management
+- **Advanced Group Roles**: Granular permission system (Admin, Moderator, Member).
+- **Invitations System**: Secure group invitation handling.
+- **Content Moderation**: Automated and manual tools to maintain community standards.
+
+### 📝 Social Engagement
+- **Interactive Feed**: Create rich-text posts with JSON/HTML storage support.
+- **Nested Comments**: Reddit-style recursive comment threads.
+- **Reactions & Polls**: Engage users with post reactions and voting polls.
+- **Push Notifications**: Real-time alerts for likes, comments, and mentions.
+
+---
+
+## 🏗 System Architecture
+
+The project follows strict **Clean Architecture** principles to ensure maintainability and testability:
+
+- **Domain Layer**: Core business logic and entities (POCOs), independent of external frameworks.
+- **Application Layer**: Use cases, DTOs, interfaces, and validation rules (MediatR/Services pattern).
+- **Infrastructure Layer**: Implementation of external concerns (SignalR Hubs, Hangfire Jobs, LiveKit Service).
+- **Persistence Layer**: Database access using **Entity Framework Core** and Repositories.
+
+### Infrastructure Components
+- **Identity Server**: JWT-based authentication with Refresh Token rotation.
+- **Background Jobs**: **Hangfire** for offloading heavy tasks (e.g., sending emails, processing content).
+- **Caching**: **Redis** for distributed caching and real-time Pub/Sub.
+
+---
+
+## 🛠 Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Core Framework** | .NET 8 (C#) |
+| **Database** | SQL Server 2019, MongoDB (Audit Logs) |
+| **Cloud & Storage** | **AWS S3** / **Azure Blob Storage** (Polymorphic file storage), **Azure Content Safety** (Moderation) |
+| **Real-time** | **Azure SignalR** (Managed Service) / ASP.NET SignalR |
+| **Video/Audio** | **LiveKit** (WebRTC SFU) |
+| **Background Jobs** | **Hangfire** (w/ Redis storage) |
+| **Logging** | Serilog (Sinks: Console, File, Seq) |
+| **Containerization** | Docker, Docker Compose |
+| **Object Mapping** | AutoMapper |
+| **Validation** | FluentValidation |
+
+---
+
+## ⚙️ Getting Started
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (optional, for local dev)
+
+### Quick Start (Docker)
+
+The easiest way to run the entire stack is via Docker Compose.
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/LanHoangPh/FastBiteGroup_DATN_Public.git
+   cd FastBiteGroupMCA
+   ```
+
+2. **Start Services**
+   ```bash
+   docker-compose up -d --build
+   ```
+   This will spin up:
+   - `fastbite-api`: The backend API on port `8080`.
+   - `sqlserver`: Main database.
+   - `redis`: Caching layer.
+   - `mongodb`: NoSQL store.
+
+3. **Access the Application**
+   - API Swagger UI: `http://localhost:8080/swagger`
+   - Hangfire Dashboard: `http://localhost:8080/hangfire`
+
+### Manual Setup (Local Development)
+
+1. Update `appsettings.Development.json` with your local connection strings.
+2. Run database migrations:
+   ```bash
+   dotnet ef database update --project FastBiteGroupMCA.Persistentce --startup-project FastBiteGroupMCA.API
+   ```
+3. Start the API:
+   ```bash
+   dotnet run --project FastBiteGroupMCA.API
+   ```
+---
+
+## 👤 Author
+
+Developed by **[LanHoangPh]**.
+A showcase of modern backend engineering, distributed systems, and clean code practices.
+
+## 📄 License
+This project is licensed under the MIT License.

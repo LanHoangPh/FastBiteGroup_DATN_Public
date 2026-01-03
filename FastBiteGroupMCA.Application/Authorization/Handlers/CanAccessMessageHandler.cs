@@ -38,7 +38,6 @@ public class CanAccessMessageHandler : AuthorizationHandler<CanAccessMessageRequ
             return;
         }
 
-        // Từ messageId, truy vấn ngược ra conversationId
         var message = await _messagesRepository.GetByIdAsync(messageId);
         if (message == null)
         {
@@ -48,12 +47,10 @@ public class CanAccessMessageHandler : AuthorizationHandler<CanAccessMessageRequ
         var conversationId = message.ConversationId;
         if (conversationId == null)
         {
-            // Tin nhắn không thuộc về bất kỳ cuộc trò chuyện nào
             context.Fail();
             return;
         }
 
-        // Kiểm tra xem user có phải là participant trong conversation đó không
         bool isParticipant = await _unitOfWork.ConversationParticipants.GetQueryable()
             .AnyAsync(p => p.ConversationID == conversationId && p.UserID == userId);
 

@@ -39,7 +39,6 @@ public class AdminExportService : IAdminExportService
         var query = _unitOfWork.Groups.GetQueryable().IgnoreQueryFilters().AsNoTracking();
         query = ApplyGroupAdminFilters(query, filters);
 
-        // Lấy dữ liệu và chiếu sang DTO export
         var groupsToExport = await query
             .OrderByDescending(g => g.CreatedAt)
             .Select(g => new AdminGroupExportDto
@@ -55,7 +54,6 @@ public class AdminExportService : IAdminExportService
             .ToListAsync();
         if (filters.TimezoneOffsetMinutes.HasValue)
         {
-            // Dùng vòng lặp để chuyển đổi múi giờ cho danh sách đã lấy về
             foreach (var group in groupsToExport)
             {
                 group.CreatedAt = group.CreatedAt.AddMinutes(-filters.TimezoneOffsetMinutes.Value);

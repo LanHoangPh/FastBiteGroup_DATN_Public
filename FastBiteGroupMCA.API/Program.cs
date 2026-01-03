@@ -208,7 +208,7 @@ namespace FastBiteGroupMCA.API
                 app.UseAuthentication();
                 app.UseAuthorization();
 
-
+                // thêm cấc hub SignalR
                 app.MapHub<ChatHub>("hubs/chatHub");
                 app.MapHub<VideoCallHub>("/hubs/videocall");
                 app.MapHub<PresenceHub>("/hubs/presence");

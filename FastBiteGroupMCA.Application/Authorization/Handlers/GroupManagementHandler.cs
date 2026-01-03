@@ -58,7 +58,6 @@ public class GroupManagementHandler : AuthorizationHandler<ManageGroupRequiremen
             return;
         }
 
-        //  Rẽ nhánh logic cho từng hoạt động, xử lý Fail tường minh
         switch (requirement.Name)
         {
             case nameof(GroupOperations.View):

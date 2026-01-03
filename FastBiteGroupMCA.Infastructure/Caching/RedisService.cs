@@ -10,7 +10,6 @@ public class RedisService : ICacheService
 
     public RedisService(IConnectionMultiplexer connectionMultiplexer, ILogger<RedisService> logger)
     {
-        // Lấy đối tượng database từ ConnectionMultiplexer đã được inject
         _redisDb = connectionMultiplexer.GetDatabase();
         _logger = logger;
     }
@@ -25,9 +24,8 @@ public class RedisService : ICacheService
         }
         catch (JsonException ex)
         {
-            // Ghi log lỗi để biết cache đang có vấn đề
             _logger.LogWarning(ex, "Failed to deserialize cache key {Key}", key);
-            return default; // Trả về mặc định nếu deserialize thất bại
+            return default; 
         }
     }
 

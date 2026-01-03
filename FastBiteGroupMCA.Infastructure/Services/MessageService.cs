@@ -262,7 +262,7 @@ public class MessageService : IMessageService
                     newMessage.ParentMessage = new ParentMessageInfo
                     {
                         SenderName = parentMessage.Sender.DisplayName,
-                        ContentSnippet = GetMessagePreview(parentMessage) // Dùng helper đã có
+                        ContentSnippet = GetMessagePreview(parentMessage) 
                     };
                 }
             }
