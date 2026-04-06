@@ -198,6 +198,7 @@ namespace FastBiteGroupMCA.Infastructure.DependencyInjection.Extension
             //services.AddScoped<FirebaseStorageService>();
             services.AddScoped<AmazonS3StorageService>();
             services.AddScoped<AzureBlobStorageService>();
+            
 
             // Đăng ký các dịch vụ lưu trữ tệp
             services.AddSingleton<IFileStorageService, CloudinaryStorageService>();

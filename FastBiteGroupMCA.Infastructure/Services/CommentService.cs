@@ -28,7 +28,7 @@ public class CommentService : ICommentService
         {
             var parentComment = await _unitOfWork.PostComments.GetQueryable()
                 .AsNoTracking()
-                .Include(c => c.Post)
+                .Include(c => c.Post).AsSplitQuery()
                 .FirstOrDefaultAsync(c => c.CommentID == parentCommentId && !c.IsDeleted);
 
             if (parentComment == null)

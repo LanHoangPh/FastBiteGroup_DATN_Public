@@ -1,25 +1,32 @@
-﻿namespace FastBiteGroupMCA.Application.Response;
+﻿using System.Text.Json.Serialization;
+
+namespace FastBiteGroupMCA.Application.Response;
 
 public class ApiResponse<T> : IApiResponse
 {
     /// <summary>
     /// cho biết request có thành công hay không.
     /// </summary>
+
     public bool Success { get; set; } = true;
 
     /// <summary>
     /// Một thông điệp tóm tắt chung cho response (tùy chọn).
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Message { get; set; }
 
     /// <summary>
     /// Dữ liệu trả về (nếu thành công).
     /// </summary>
+    /// 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public T? Data { get; set; }
 
     /// <summary>
     /// Danh sách các lỗi chi tiết (nếu thất bại).
     /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<ApiError>? Errors { get; set; }
 
     public int StatusCode { get; set; }

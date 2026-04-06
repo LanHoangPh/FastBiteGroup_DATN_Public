@@ -24,8 +24,6 @@ public class GroupsRepository : GenericRepository<Group>, IGroupsRepository
         {
             query = query.IgnoreQueryFilters();
         }
-
-        // Vì đây là GroupRepository, chúng ta biết chắc chắn khóa chính là "GroupID"
         return await query.FirstOrDefaultAsync(g => g.GroupID == groupId);
     }
 }

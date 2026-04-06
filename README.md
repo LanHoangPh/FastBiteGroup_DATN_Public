@@ -151,7 +151,8 @@ FastBiteGroupMCA
 ```
 
 ---
-
+## Link Frontend
+https://github.com/LanHoangPh/FE_FastBiteGroup.git
 ## 👤 Author
 
 Developed by **[LanHoangPh]**.
