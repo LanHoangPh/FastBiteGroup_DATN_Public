@@ -11,8 +11,6 @@ public class SettingsService : ISettingsService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SettingsService> _logger;
     private readonly IPubSubService _pubSubService;
-
-    // Sử dụng IServiceProvider để tạo scope riêng khi cần cập nhật CSDL từ một Singleton
     public SettingsService(IServiceProvider serviceProvider, ILogger<SettingsService> logger, IPubSubService pubSubService)
     {
         _serviceProvider = serviceProvider;
@@ -49,7 +47,7 @@ public class SettingsService : ISettingsService
             }
             catch (Exception)
             {
-                return defaultValue; // Trả về mặc định nếu không thể ép kiểu
+                return defaultValue; 
             }
         }
         return defaultValue;
@@ -103,8 +101,6 @@ public class SettingsService : ISettingsService
         {
             await unitOfWork.SaveChangesAsync();
             _logger.LogInformation("{Count} global settings updated in database and cache by Admin {AdminId}.", changesToLog.Count, adminId);
-
-            // Ghi một bản ghi log cho mỗi thay đổi
             foreach (var change in changesToLog)
             {
                 backgroundJobClient.Enqueue(() => auditLogService.LogAdminActionAsync(

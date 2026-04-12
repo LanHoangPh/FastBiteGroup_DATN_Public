@@ -23,7 +23,6 @@ public class RedisUserPresenceService : IUserPresenceService
 
     public async Task UserConnectedAsync(Guid userId, string connectionId)
     {
-        // THAY ĐỔI 3: Sử dụng _keyManager để lấy key
         await _redisDb.HashSetAsync(_keyManager.ConnectionsHashKey(), connectionId, userId.ToString());
         await _redisDb.SetAddAsync(_keyManager.UserConnectionsSetKey(userId), connectionId);
 
@@ -32,19 +31,19 @@ public class RedisUserPresenceService : IUserPresenceService
 
     public async Task<Guid?> UserDisconnectedAsync(string connectionId)
     {
-        var connectionsKey = _keyManager.ConnectionsHashKey(); // <- Dùng keyManager
+        var connectionsKey = _keyManager.ConnectionsHashKey(); 
         var userIdStr = await _redisDb.HashGetAsync(connectionsKey, connectionId);
         if (string.IsNullOrEmpty(userIdStr)) return null;
 
         var userId = Guid.Parse(userIdStr);
-        var userConnectionsKey = _keyManager.UserConnectionsSetKey(userId); // <- Dùng keyManager
+        var userConnectionsKey = _keyManager.UserConnectionsSetKey(userId); 
 
         await _redisDb.HashDeleteAsync(connectionsKey, connectionId);
         await _redisDb.SetRemoveAsync(userConnectionsKey, connectionId);
 
         if (await _redisDb.SetLengthAsync(userConnectionsKey) == 0)
         {
-            await _redisDb.HashDeleteAsync(_keyManager.StatusesHashKey(), userId.ToString()); // <- Dùng keyManager
+            await _redisDb.HashDeleteAsync(_keyManager.StatusesHashKey(), userId.ToString()); 
             // Cập nhật cả SQL khi offline
             _backgroundJobClient.Enqueue<IUserPresenceService>(
                 service => service.UpdatePersistentUserStatusAsync(userId, EnumUserPresenceStatus.Offline)

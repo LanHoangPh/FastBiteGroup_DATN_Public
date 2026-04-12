@@ -64,7 +64,6 @@ public class PollService : IPollService
             }
             else
             {
-                // Nếu vote chưa tồn tại, đây là hành động BỎ PHIẾU MỚI
                 var newVote = new PollVotes { PollOptionID = pollOptionId, UserID = userId, VotedAt = DateTime.UtcNow };
                 await _unitOfWork.PollVotes.AddAsync(newVote);
             }
@@ -79,16 +78,13 @@ public class PollService : IPollService
             throw;
         }
 
-        // === BƯỚC 3: Broadcast kết quả mới nhất qua SignalR ===
         await BroadcastPollUpdates(pollId, poll.ConversationID);
 
         return ApiResponse<object>.Ok(null, "Bỏ phiếu thành công.");
     }
 
-    // Helper method để lấy kết quả và broadcast
     private async Task BroadcastPollUpdates(int pollId, int conversationId)
     {
-        // Truy vấn lại toàn bộ trạng thái mới nhất của poll
         var updatedPollState = await _unitOfWork.Polls.GetQueryable()
             .Where(p => p.PollID == pollId)
             .Select(p => new PollResultsDTO
@@ -119,7 +115,6 @@ public class PollService : IPollService
         if (!Guid.TryParse(_currentUser.Id, out var userId))
             return ApiResponse<CreatePollResponseDTO>.Fail("UNAUTHORIZED", "Không hợp lệ.");
 
-        // Lấy thông tin người gửi và kiểm tra quyền thành viên
         var sender = await _unitOfWork.ConversationParticipants.GetQueryable()
             .Where(p => p.ConversationID == conversationId && p.UserID == userId)
             .Select(p => p.User)
@@ -127,10 +122,6 @@ public class PollService : IPollService
 
         if (sender == null)
             return ApiResponse<CreatePollResponseDTO>.Fail("FORBIDDEN", "Bạn không có quyền tạo bình chọn trong nhóm này.");
-
-        // -- Bắt đầu xử lý nghiệp vụ --
-
-        // Bước 1: Tạo Poll và các Options trong SQL (dùng Transaction)
         var newPoll = new Polls
         {
             ConversationID = conversationId,
@@ -144,7 +135,7 @@ public class PollService : IPollService
         try
         {
             await _unitOfWork.Polls.AddAsync(newPoll);
-            await _unitOfWork.SaveChangesAsync(); // Lưu để lấy PollID
+            await _unitOfWork.SaveChangesAsync(); 
 
             var pollOptions = dto.Options.Select(opt => new PollOptions
             {
@@ -164,28 +155,24 @@ public class PollService : IPollService
             throw;
         }
 
-        // Bước 2: Tạo và gửi tin nhắn thông báo (sau khi transaction thành công)
         var pollMessage = new Messages
         {
             ConversationId = conversationId,
             MessageType = EnumMessageType.Poll,
             SentAt = newPoll.CreatedAt,
             Sender = new SenderInfo { UserId = sender.Id, DisplayName = sender.FullName!, AvatarUrl = sender.AvatarUrl },
-            // Lưu PollID vào content để client biết cần render poll nào
             Content = newPoll.PollID.ToString()
         };
         await _messageRepo.InsertOneAsync(pollMessage);
 
-        // Bước 3: Broadcast tin nhắn qua SignalR
         var messageDto = _mapper.Map<MessageDTO>(pollMessage);
         await _hubContext.Clients.Group($"conversation_{conversationId}")
                          .SendAsync("ReceiveMessage", messageDto);
 
-        // Bước 4: Trả về kết quả
         var responseDto = new CreatePollResponseDTO
         {
             PollId = newPoll.PollID,
-            PollMessage = messageDto // Trả về cả tin nhắn vừa tạo
+            PollMessage = messageDto 
         };
 
         return ApiResponse<CreatePollResponseDTO>.Ok(responseDto, "Tạo bình chọn thành công.");
@@ -209,14 +196,12 @@ public class PollService : IPollService
                     OptionId = opt.PollOptionID,
                     OptionText = opt.OptionText,
                     VoteCount = opt.Votes.Count(),
-                    // Lấy và map thông tin của những người đã vote
                     Voters = opt.Votes.Select(v => new VoterDTO
                     {
                         UserId = v.UserID,
                         FullName = v.User!.FullName!,
                         AvatarUrl = v.User.AvatarUrl
                     }).ToList(),
-                    // Thêm cờ kiểm tra cho người dùng hiện tại
                     HasVotedByCurrentUser = opt.Votes.Any(v => v.UserID == userId)
                 }).ToList()
             })
@@ -237,7 +222,6 @@ public class PollService : IPollService
         if (poll == null)
             return ApiResponse<object>.Fail("POLL_NOT_FOUND", "Không tìm thấy bình chọn.");
 
-        // Kiểm tra quyền: Chỉ người tạo poll mới được đóng
         if (poll.CreatedByUserID != userId)
             return ApiResponse<object>.Fail("FORBIDDEN", "Bạn không có quyền đóng bình chọn này.");
 
@@ -248,7 +232,7 @@ public class PollService : IPollService
         _unitOfWork.Polls.Update(poll);
         await _unitOfWork.SaveChangesAsync();
 
-        // Broadcast trạng thái mới của poll đến tất cả mọi người
+
         await BroadcastPollUpdates(pollId, poll.ConversationID);
 
         return ApiResponse<object>.Ok(null, "Đóng bình chọn thành công.");
@@ -263,17 +247,17 @@ public class PollService : IPollService
         if (poll == null)
             return ApiResponse<object>.Fail("POLL_NOT_FOUND", "Không tìm thấy bình chọn.");
 
-        // Kiểm tra quyền: Chỉ người tạo poll hoặc Admin/Mod nhóm mới được xóa
+
         var isCreator = poll.CreatedByUserID == userId;
-        // (Logic kiểm tra Admin/Mod nhóm có thể được thêm vào đây nếu cần)
+
         if (!isCreator)
             return ApiResponse<object>.Fail("FORBIDDEN", "Bạn không có quyền xóa bình chọn này.");
 
-        poll.IsDeleted = true; // Xóa mềm
+        poll.IsDeleted = true; 
         _unitOfWork.Polls.Update(poll);
         await _unitOfWork.SaveChangesAsync();
 
-        // Broadcast sự kiện xóa poll
+
         await _hubContext.Clients.Group($"conversation_{poll.ConversationID}")
                          .SendAsync("PollDeleted", poll.PollID);
 

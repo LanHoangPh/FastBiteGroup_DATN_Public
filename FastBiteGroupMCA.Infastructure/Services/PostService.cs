@@ -23,7 +23,7 @@ public class PostService : IPostService
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
     private readonly IHubContext<NotificationsHub> _hubContext;
-    private readonly IHubContext<PostsHub> _postsHubContext; // <-- Thay đổi
+    private readonly IHubContext<PostsHub> _postsHubContext;
 
     public PostService(
         IUnitOfWork unitOfWork, 
@@ -109,7 +109,6 @@ public class PostService : IPostService
 
             if (createdPostForDto == null)
             {
-                // Trường hợp hiếm gặp, nhưng nên xử lý
                 return ApiResponse<PostDetailDTO>.Fail("FETCH_FAILED", "Không thể lấy lại thông tin bài viết vừa tạo.");
             }
 
@@ -176,8 +175,6 @@ public class PostService : IPostService
 
         var post = postDetail.Post;
         var currentUserRole = postDetail.CurrentUserRole.Value;
-
-        // Lấy trang bình luận cấp 1
         var commentsPage = await _unitOfWork.PostComments.GetQueryable()
             .Where(c => c.PostID == postId && c.ParentCommentID == null && !c.IsDeleted)
             .OrderBy(c => c.CreatedAt)
@@ -193,7 +190,6 @@ public class PostService : IPostService
             })
             .ToPagedResultAsync(query.PageNumber, query.PageSize);
 
-        // Map DTO chính
         var postDetailDto = new PostDetailDTO
         {
             PostId = post.PostID,
@@ -337,7 +333,6 @@ public class PostService : IPostService
 
             if (isNowLiked && post.AuthorUserID != userId)
             {
-                // Chỉ tạo EventData với các ID
                 var eventData = new PostLikedEventData(postId, userId);
 
                 _backgroundJobClient.Enqueue<INotificationService>(service =>
@@ -368,7 +363,7 @@ public class PostService : IPostService
     {
         var groupName = $"post-updates_{postId}";
         await _postsHubContext.Clients.Group(groupName)
-            .SendAsync("PostLikeUpdated", newLikeCount, userId, true); // true = liked
+            .SendAsync("PostLikeUpdated", newLikeCount, userId, true); 
     }
 
     public async Task<ApiResponse<PostCommentDTO>> AddCommentAsync(int postId, CreateCommentDTO dto)
@@ -424,7 +419,6 @@ public class PostService : IPostService
 
             if (post.AuthorUserID != userId)
             {
-                // Chỉ tạo EventData với các ID
                 var eventData = new NewCommentEventData(postId, newComment.CommentID, userId);
 
                 _backgroundJobClient.Enqueue<INotificationService>(s =>
@@ -491,7 +485,6 @@ public class PostService : IPostService
         if (comment == null)
             return ApiResponse<object>.Fail("COMMENT_NOT_FOUND", "Không tìm thấy bình luận.", 404);
 
-        // QUY TẮC XÓA: Tác giả HOẶC Admin/Mod của nhóm
         var userMembership = await _unitOfWork.GroupMembers.GetQueryable()
             .AsNoTracking()
             .FirstOrDefaultAsync(gm => gm.GroupID == comment.Post.GroupID && gm.UserID == userId);
@@ -505,17 +498,14 @@ public class PostService : IPostService
         await using var transaction = await _unitOfWork.BeginTransactionAsync();
         try
         {
-            // --- LOGIC XÓA MỀM ĐỆ QUY ---
-            // Tạo một danh sách để thu thập tất cả các ID cần xóa (cha và con)
+
             var allCommentIdsToDelete = new List<int>();
 
-            // Dùng một hàm helper đệ quy để xóa mềm
             await SoftDeleteCommentAndRepliesAsync(comment, allCommentIdsToDelete);
 
             await _unitOfWork.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            // Gửi sự kiện real-time với danh sách ID đã bị xóa
             _backgroundJobClient.Enqueue(() =>
                 BroadcastCommentDeletionAsync(comment.PostID, allCommentIdsToDelete));
 
@@ -531,19 +521,16 @@ public class PostService : IPostService
 
     private async Task SoftDeleteCommentAndRepliesAsync(PostComments comment, List<int> deletedIds)
     {
-        // Nếu bình luận này chưa bị xóa
         if (!comment.IsDeleted)
         {
             comment.IsDeleted = true;
-            comment.Content = "[Bình luận đã bị xóa]"; // Thay thế nội dung
+            comment.Content = "[Bình luận đã bị xóa]";
             deletedIds.Add(comment.CommentID);
 
-            // Đệ quy: Nếu có các bình luận con, gọi lại chính hàm này cho từng đứa con
             if (comment.Replies != null && comment.Replies.Any())
             {
                 foreach (var reply in comment.Replies)
                 {
-                    // Cần đảm bảo reply được tải đầy đủ
                     var fullReply = await _unitOfWork.PostComments.GetQueryable()
                         .Include(r => r.Replies)
                         .FirstAsync(r => r.CommentID == reply.CommentID);
@@ -593,7 +580,7 @@ public class PostService : IPostService
     public async Task BroadcastCommentDeletionAsync(int postId, List<int> deletedCommentIds)
     {
         await _postsHubContext.Clients.Group($"post-updates_{postId}")
-            .SendAsync("CommentsDeleted", deletedCommentIds); // Đổi tên sự kiện và gửi cả danh sách
+            .SendAsync("CommentsDeleted", deletedCommentIds); 
     }
 
     public async Task<ApiResponse<object>> DeletePostAsync(int postId)
@@ -615,15 +602,12 @@ public class PostService : IPostService
         if (!isAuthor && !isGroupAdminOrMod)
             return ApiResponse<object>.Fail("FORBIDDEN", "Bạn không có quyền xóa bài viết này.", 403);
 
-        // Thực hiện xóa mềm
         post.IsDeleted = true;
         await _unitOfWork.SaveChangesAsync();
 
-        // Gửi sự kiện real-time "PostDeleted" qua PostsHub
         _backgroundJobClient.Enqueue(() =>
             BroadcastPostDeletionAsync(post.GroupID, postId));
 
-        // Gửi thông báo cá nhân cho tác giả nếu người xóa là Admin/Mod
         if (post.AuthorUserID != userId)
         {
             var deleter = await _unitOfWork.Users.GetByIdAsync(userId);
@@ -652,7 +636,7 @@ public class PostService : IPostService
 
         post.Title = dto.Title;
         post.ContentJson = dto.ContentJson;
-        post.ContentHtml = _contentRenderer.RenderAndSanitize(dto.ContentJson); // Render lại HTML
+        post.ContentHtml = _contentRenderer.RenderAndSanitize(dto.ContentJson); 
         post.UpdatedAt = DateTime.UtcNow;
 
         await _unitOfWork.SaveChangesAsync();
@@ -683,11 +667,9 @@ public class PostService : IPostService
         post.IsPinned = dto.IsPinned;
         await _unitOfWork.SaveChangesAsync();
 
-        // Gửi sự kiện real-time "PostPinStatusChanged" qua PostsHub
         _backgroundJobClient.Enqueue(() =>
             BroadcastPostPinStatusAsync(post.GroupID, postId, dto.IsPinned));
 
-        // Gửi thông báo cá nhân cho tác giả bài viết (nếu không phải tự ghim)
         if (post.AuthorUserID != userId)
         {
             var pinner = await _unitOfWork.Users.GetByIdAsync(userId);
@@ -712,7 +694,6 @@ public class PostService : IPostService
     [DisplayName("Broadcast Post Deletion for Group: {0}")]
     public async Task BroadcastPostDeletionAsync(Guid groupId, int postId)
     {
-        // Gửi cho cả group feed và kênh riêng của bài viết
         await _postsHubContext.Clients.Group($"group-feed_{groupId}")
             .SendAsync("PostDeleted", postId);
         await _postsHubContext.Clients.Group($"post-updates_{postId}")
@@ -722,7 +703,6 @@ public class PostService : IPostService
     [DisplayName("Broadcast Post Pin Status Change for Group: {0}")]
     public async Task BroadcastPostPinStatusAsync(Guid groupId, int postId, bool isPinned)
     {
-        // Gửi cho cả group feed và kênh riêng của bài viết
         await _postsHubContext.Clients.Group($"group-feed_{groupId}")
             .SendAsync("PostPinStatusChanged", postId, isPinned);
         await _postsHubContext.Clients.Group($"post-updates_{postId}")

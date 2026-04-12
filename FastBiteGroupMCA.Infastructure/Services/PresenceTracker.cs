@@ -4,7 +4,6 @@ namespace FastBiteGroupMCA.Infastructure.Services;
 
 public class PresenceTracker
 {
-    // Key: userId (string), Value: danh sách các connectionId
     private static readonly ConcurrentDictionary<string, List<string>> OnlineUsers = new();
 
     public Task<bool> UserConnected(string userId, string connectionId)
@@ -19,7 +18,7 @@ public class PresenceTracker
             else
             {
                 OnlineUsers.TryAdd(userId, new List<string> { connectionId });
-                isOnline = true; // Đây là kết nối ĐẦU TIÊN
+                isOnline = true; 
             }
         }
         return Task.FromResult(isOnline);
@@ -37,7 +36,7 @@ public class PresenceTracker
             if (OnlineUsers[userId].Count == 0)
             {
                 OnlineUsers.TryRemove(userId, out _);
-                isOffline = true; // Đây là kết nối CUỐI CÙNG
+                isOffline = true; 
             }
         }
         return Task.FromResult(isOffline);

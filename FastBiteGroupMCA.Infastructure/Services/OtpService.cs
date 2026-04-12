@@ -113,7 +113,7 @@ public class OtpService : IOtpService
                     var remainingExpiry = otpData.ExpiresAt - DateTime.UtcNow;
                     if (remainingExpiry > TimeSpan.Zero)
                     {
-                        // Thay thế 'options' bằng 'remainingExpiry' (kiểu TimeSpan)
+
                         await _redisDb.StringSetAsync(cacheKey, JsonSerializer.Serialize(otpData), remainingExpiry);
                     }
                 }
@@ -136,11 +136,10 @@ public class OtpService : IOtpService
                 var otpData = JsonSerializer.Deserialize<OtpData>(existingValue.ToString());
                 if (otpData != null)
                 {
-                    otpData.FailedAttempts = 0; // Reset về 0
+                    otpData.FailedAttempts = 0; 
                     var remainingExpiry = otpData.ExpiresAt - DateTime.UtcNow;
                     if (remainingExpiry > TimeSpan.Zero)
                     {
-                        // Thay thế 'options' bằng 'remainingExpiry' (kiểu TimeSpan)
                         await _redisDb.StringSetAsync(cacheKey, JsonSerializer.Serialize(otpData), remainingExpiry);
                     }
                 }
@@ -149,7 +148,6 @@ public class OtpService : IOtpService
     }
 
     private static string GetOtpKey(string key) => $"otp:{key}";
-    //private static string GetFailedAttemptsKey(string key) => $"otp_attempts:{key}";
 
     private class OtpData
     {
