@@ -101,7 +101,7 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                         MemberCount = x.Group.Members.Count(),
                         IsOwner = x.Group.CreatedByUserID == userId, 
-                        IsAdmin = x.UserRoleInGroup == EnumGroupRole.Admin || x.Group.CreatedByUserID == userId // Admin hoặc Owner đều có quyền Admin
+                        IsAdmin = x.UserRoleInGroup == EnumGroupRole.Admin || x.Group.CreatedByUserID == userId 
                     })
                     .ToPagedResultAsync(query.PageNumber, query.PageSize);
 
@@ -211,7 +211,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
                     queryable = queryable.Where(g => !joinedGroupIds.Contains(g.GroupID));
                 }
 
-                // Áp dụng các bộ lọc khác (SearchTerm, FilterType) không đổi
                 if (!string.IsNullOrWhiteSpace(query.SearchTerm))
                 {
                     var searchTermTrimmed = query.SearchTerm.Trim();
@@ -340,7 +339,7 @@ namespace FastBiteGroupMCA.Infastructure.Services
                 if (inviterMembership == null || inviterMembership.Role == EnumGroupRole.Member)
                     return ApiResponse<object>.Fail("Forbidden", "Bạn không có quyền mời thành viên vào nhóm riêng tư này.");
             }
-            else // group.Privacy == EnumGroupPrivacy.Public
+            else 
             {
                 if (inviterMembership == null)
                     return ApiResponse<object>.Fail("Forbidden", "Bạn phải là thành viên của nhóm để gửi lời mời.");
@@ -352,7 +351,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
             var successfulInvitations = new List<UserGroupInvitation>();
             var failedUserIds = new List<Guid>();
 
-            // Lấy danh sách các lời mời đã tồn tại cho các user này trong nhóm
             var existingInvitations = await _unitOfWork.UserGroupInvitations.GetQueryable()
                 .Where(i => i.GroupID == groupId && dto.InvitedUserIds.Contains(i.InvitedUserID))
                 .ToListAsync();
@@ -363,9 +361,8 @@ namespace FastBiteGroupMCA.Infastructure.Services
                 .ToListAsync();
 
 
-            foreach (var invitedId in dto.InvitedUserIds.Distinct()) // Dùng Distinct để tránh xử lý trùng lặp
+            foreach (var invitedId in dto.InvitedUserIds.Distinct()) 
             {
-                // Bỏ qua nếu người này đã là thành viên
                 if (existingMemberIds.Contains(invitedId))
                 {
                     continue;
@@ -438,11 +435,10 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
             if (group.Privacy == EnumGroupPrivacy.Private)
             {
-                // QUY TẮC CHO NHÓM RIÊNG TƯ: Phải là Admin/Mod
                 if (membership == null || membership.Role == EnumGroupRole.Member)
                     return ApiResponse<InviteLinkDTO>.Fail("Forbidden", "Bạn không có quyền tạo link mời cho nhóm riêng tư này.");
             }
-            else // group.Privacy == EnumGroupPrivacy.Public
+            else 
             {
                 if (membership == null)
                     return ApiResponse<InviteLinkDTO>.Fail("Forbidden", "Bạn phải là thành viên của nhóm để tạo link mời.");
@@ -503,9 +499,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
                     CanEdit = currentUserRole == EnumGroupRole.Admin || currentUserRole == EnumGroupRole.Moderator,
                     CanArchive = currentUserRole == EnumGroupRole.Admin,
                     CanDelete = currentUserRole == EnumGroupRole.Admin,
-                    // Quy tắc:
-                    // - Nếu nhóm là Public, bất kỳ thành viên nào cũng có quyền mời.
-                    // - Nếu nhóm là Private, chỉ Admin/Mod mới có quyền mời.
                     CanInviteMembers = (g.Privacy == EnumGroupPrivacy.Public) ||
                                (g.Privacy == EnumGroupPrivacy.Private && currentUserRole > EnumGroupRole.Member)
                 })
@@ -632,8 +625,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                 if (membership == null)
                     return ApiResponse<object>.Fail("NotAMember", "Bạn không phải là thành viên của nhóm này.");
-
-                // QUAN TRỌNG: Logic kiểm tra Admin cuối cùng
                 if (membership.Role == EnumGroupRole.Admin)
                 {
                     var otherAdminsCount = await _unitOfWork.GroupMembers.GetQueryable()
@@ -644,12 +635,9 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                     if (otherAdminsCount == 0)
                     {
-                        // Trả về mã lỗi đặc biệt để Frontend xử lý
                         return ApiResponse<object>.Fail("LAST_ADMIN_LEAVE_ATTEMPT", "Bạn là quản trị viên cuối cùng. Vui lòng chuyển quyền cho người khác trước khi rời nhóm.");
                     }
                 }
-
-                // Xử lý rời nhóm bình thường
                 var participationsToRemove = await _unitOfWork.ConversationParticipants.GetQueryable()
                     .Where(cp => cp.UserID == userGuid && cp.Conversation!.ExplicitGroupID == groupId)
                     .ToListAsync();
@@ -710,17 +698,14 @@ namespace FastBiteGroupMCA.Infastructure.Services
                 if (newAdminMembership == null)
                     return ApiResponse<object>.Fail("TargetNotFound", "Người được chọn không phải là thành viên của nhóm.");
 
-                // Thăng cấp cho người kế nhiệm
                 newAdminMembership.Role = EnumGroupRole.Admin;
 
-                // Xóa người dùng hiện tại khỏi các cuộc trò chuyện
                 var participationsToRemove = await _unitOfWork.ConversationParticipants.GetQueryable()
                     .Where(cp => cp.UserID == currentAdminGuid && cp.Conversation!.ExplicitGroupID == groupId)
                     .ToListAsync();
                 if (participationsToRemove.Any())
                     _unitOfWork.ConversationParticipants.RemoveRange(participationsToRemove);
 
-                // Xóa bản ghi thành viên của người dùng hiện tại
                 _unitOfWork.GroupMembers.Remove(currentAdminMembership);
 
                 await _unitOfWork.SaveChangesAsync();
@@ -731,14 +716,11 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                 if (group != null && newAdminUser != null)
                 {
-                    // 1. Gửi thông báo cá nhân cho admin mới
                     var eventData = new AdminPromotionEventData(group);
                     await _notificationService.DispatchNotificationAsync<AdminPromotionNotificationTemplate, AdminPromotionEventData>(
                         dto.NewAdminUserId,
                         eventData
                     );
-
-                    // 2. Gửi thông báo hệ thống vào kênh chat (như đã làm ở lần trước)
                     var oldAdmin = await _unitOfWork.Users.GetByIdAsync(currentAdminGuid);
                     if (oldAdmin != null)
                     {
@@ -826,7 +808,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
             if (group == null)
                 return ApiResponse<UpdateGroupAvatarResponseDTO>.Fail("GROUP_NOT_FOUND", "Không tìm thấy nhóm.");
 
-            // 4. Cập nhật CSDL
             var oldAvatarUrl = group.GroupAvatarUrl;
             group.GroupAvatarUrl = uploadResponse.Data!.Url;
             
@@ -895,7 +876,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
                 var conversation = await _unitOfWork.Conversations.GetQueryable()
                     .FirstOrDefaultAsync(c => c.ExplicitGroupID == groupId);
 
-                // BƯỚC 3: Nếu nhóm này có cuộc trò chuyện, thêm thành viên vào đó
                 if (conversation != null)
                 {
                     var newParticipant = new ConversationParticipants
@@ -909,11 +889,7 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                 await _unitOfWork.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                //var group2 = await _unitOfWork.Groups.GetByIdAsync(groupId);
                 var addedByUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
-
-                // Gửi thông báo cho người được thêm
                 if (group != null && addedByUser != null)
                 {
                     var eventData = new UserAddedToGroupEventData(group, addedByUser);
@@ -923,7 +899,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
                         eventData
                     );
                 }
-                // Chỉ gửi nếu nhóm này có kênh chat
                 if (group?.Conversation != null)
                 {
                     var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
@@ -950,7 +925,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
             if (!Guid.TryParse(_currentUser.Id, out var creatorGuid))
                 return ApiResponse<CreateGroupsResponseDTO>.Fail("Unauthorized", "Người dùng không hợp lệ.");
 
-            // Validation nghiệp vụ: Nhóm chat chỉ có thể là Public hoặc Private
             if (dto.GroupType == EnumGroupType.Community)
             {
                 return ApiResponse<CreateGroupsResponseDTO>.Fail("Validation", "Loại nhóm không hợp lệ cho nhóm trò chuyện.");
@@ -1188,14 +1162,11 @@ namespace FastBiteGroupMCA.Infastructure.Services
 
                 if (group != null && currentUser != null && kickedUser != null)
                 {
-                    // 1. Gửi tin nhắn hệ thống vào kênh chat (đã có)
                     if (conversation != null)
                     {
                         var systemMessageContent = $"{kickedUser.FullName} đã bị xóa khỏi nhóm bởi {currentUser.FullName}.";
                         await _messageService.SendSystemMessageAsync(conversation.ConversationID, systemMessageContent);
                     }
-
-                    // 2. Gửi thông báo cá nhân cho người bị kick
                     var eventData = new UserKickedEventData(group, currentUser);
                     await _notificationService.DispatchNotificationAsync<UserKickedNotificationTemplate, UserKickedEventData>(
                         userIdToKick,
@@ -1247,8 +1218,6 @@ namespace FastBiteGroupMCA.Infastructure.Services
         {
             return await SetGroupArchiveStatusAsync(groupId, false);
         }
-
-        // --- PHƯƠNG THỨC HELPER DÙNG CHUNG LƯU TRỮ ---
         private async Task<ApiResponse<object>> SetGroupArchiveStatusAsync(Guid groupId, bool isArchived)
         {
             if (!Guid.TryParse(_currentUser.Id, out var userId))

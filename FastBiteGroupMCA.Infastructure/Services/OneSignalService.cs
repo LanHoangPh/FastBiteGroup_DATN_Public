@@ -51,17 +51,15 @@ public class OneSignalService : IOneSignalService
     {
         if (!playerIds.Any()) return;
 
-        // CẢI TIẾN: Sử dụng DTO đã định nghĩa
         var payload = new OneSignalPayload
         {
             AppId = _settings.AppId,
             IncludePlayerIds = playerIds,
             Contents = new Dictionary<string, string> { { "en", message } },
             Headings = new Dictionary<string, string> { { "en", "Thông báo mới" } },
-            WebUrl = webUrl // Dễ dàng thêm các trường mới
+            WebUrl = webUrl 
         };
 
-        // Sử dụng JsonSerializerOptions để bỏ qua các giá trị null
         var options = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
         var jsonPayload = JsonSerializer.Serialize(payload, options);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");

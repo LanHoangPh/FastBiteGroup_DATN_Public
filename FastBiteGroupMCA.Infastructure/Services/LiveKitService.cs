@@ -23,12 +23,8 @@ public class LiveKitService : ILiveKitService
             CanSubscribe = true,
             CanPublishData = true
         };
-
-        // Áp dụng Logic Phân quyền Hybrid
         bool isInitiator = (user.Id == session.InitiatorUserID);
         bool isGroupAdminOrMod = (userRole == EnumGroupRole.Admin || userRole == EnumGroupRole.Moderator);
-
-        // Nếu là người tạo hoặc là Admin/Mod của nhóm, cấp quyền quản lý phòng
         if (isInitiator || isGroupAdminOrMod)
         {
             grants.RoomAdmin = true;

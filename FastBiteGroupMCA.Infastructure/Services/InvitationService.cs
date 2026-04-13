@@ -31,26 +31,21 @@ public class InvitationService : IInvitationService
         if (!Guid.TryParse(_currentUser.Id, out var userGuid))
             return ApiResponse<JoinGroupResponseDTO>.Fail("Unauthorized", "Người dùng không hợp lệ.");
 
-        // Dùng transaction cho toàn bộ thao tác
         await using var transaction = await _unitOfWork.BeginTransactionAsync();
         try
         {
-            // BƯỚC 1: Validate link bên trong transaction để đảm bảo an toàn
             var validationResult = await ValidateInviteLink(invitationCode);
             if (validationResult.link == null)
                 return ApiResponse<JoinGroupResponseDTO>.Fail(validationResult.errorCode!, validationResult.errorMessage!);
 
             var invitation = validationResult.link;
 
-            // BƯỚC 2: Kiểm tra đã là thành viên chưa
             if (await _unitOfWork.GroupMembers.GetQueryable()
                 .AnyAsync(gm => gm.GroupID == invitation.GroupID && gm.UserID == userGuid))
                 return ApiResponse<JoinGroupResponseDTO>.Fail("AlreadyMember", "Bạn đã là thành viên của nhóm này.");
 
-            // BƯỚC 3: Thực thi logic
             invitation.CurrentUses++;
 
-            // Dòng Update() này là cần thiết khi dùng RowVersion để EF Core biết cần kiểm tra xung đột
             _unitOfWork.GroupInvitations.Update(invitation);
 
             await AddUserToGroupAndConversationAsync(invitation.GroupID, userGuid);
@@ -58,7 +53,6 @@ public class InvitationService : IInvitationService
             await _unitOfWork.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            // BƯỚC 4: Trả về kết quả
             var conversation = await _unitOfWork.Conversations.GetQueryable()
                 .AsNoTracking().FirstOrDefaultAsync(c => c.ExplicitGroupID == invitation.GroupID);
 
@@ -95,7 +89,6 @@ public class InvitationService : IInvitationService
         return (invitation, null, null);
     }
 
-    // Helper method để thêm thành viên
     private async Task AddUserToGroupAndConversationAsync(Guid groupId, Guid userId)
     {
         await _unitOfWork.GroupMembers.AddAsync(new GroupMember { GroupID = groupId, UserID = userId, Role = EnumGroupRole.Member, JoinedAt = DateTime.UtcNow });
@@ -127,7 +120,6 @@ public class InvitationService : IInvitationService
 
         if (groupPreview == null)
         {
-            // Trường hợp hiếm gặp: link mời hợp lệ nhưng nhóm đã bị xóa ngay sau đó
             return ApiResponse<GroupPreviewDTO>.Fail("GROUP_NOT_FOUND", "Nhóm liên kết với lời mời không còn tồn tại.");
         }
 
@@ -202,7 +194,7 @@ public class InvitationService : IInvitationService
                     });
                 }
             }
-            else // Từ chối lời mời
+            else 
             {
                 invitation.Status = EnumInvitationStatus.Declined;
             }
@@ -210,7 +202,7 @@ public class InvitationService : IInvitationService
             await transaction.CommitAsync();
         }
 
-        catch (Exception ex) // Bổ sung logging
+        catch (Exception ex) 
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Lỗi khi xử lý lời mời {InvitationId} cho user {UserId}", invitationId, userGuid);
@@ -219,20 +211,17 @@ public class InvitationService : IInvitationService
 
         if (dto.Accept)
         {
-            var acceptedUser = await _unitOfWork.Users.GetByIdAsync(userGuid); // Vẫn cần query để lấy FullName
+            var acceptedUser = await _unitOfWork.Users.GetByIdAsync(userGuid); 
             if (acceptedUser != null && invitation.Group != null)
             {
-                // 1. Gửi tin nhắn hệ thống (sử dụng lại biến conversation)
                 if (conversation != null)
                 {
                     var systemMessageContent = $"{acceptedUser.FullName} đã tham gia nhóm.";
-                    // Gợi ý: Bọc trong try-catch riêng để lỗi gửi tin nhắn không làm sập cả request
                     try { await _messageService.SendSystemMessageAsync(conversation.ConversationID, systemMessageContent); }
                     catch (Exception msgEx) { _logger.LogError(msgEx, "Lỗi gửi tin nhắn hệ thống khi user {UserId} tham gia nhóm {GroupId}", userGuid, invitation.GroupID); }
                 }
 
-                // 2. Gửi thông báo (sử dụng lại dữ liệu đã Include)
-                var inviter = invitation.InvitedByUser; // Lấy từ dữ liệu đã tải, KHÔNG query lại
+                var inviter = invitation.InvitedByUser; 
                 if (inviter != null)
                 {
                     var eventData = new InvitationAcceptedEventData(acceptedUser, invitation.Group);
@@ -255,7 +244,6 @@ public class InvitationService : IInvitationService
         if (!Guid.TryParse(_currentUser.Id, out var currentUserId))
             return ApiResponse<PagedResult<SentGroupInvitationDTO>>.Fail("Unauthorized", "Người dùng không hợp lệ.", 401);
 
-        // KIỂM TRA QUYỀN: Chỉ Admin hoặc Mod của nhóm mới được xem danh sách này
         var userMembership = await _unitOfWork.GroupMembers.GetQueryable()
             .FirstOrDefaultAsync(gm => gm.GroupID == groupId && gm.UserID == currentUserId);
 
@@ -266,26 +254,22 @@ public class InvitationService : IInvitationService
 
         try
         {
-            // Xây dựng câu query
             var queryable = _unitOfWork.UserGroupInvitations.GetQueryable()
-                .Include(i => i.InvitedUser)  // Tải thông tin người được mời
-                .Include(i => i.InvitedByUser) // Tải thông tin người mời
+                .Include(i => i.InvitedUser)  
+                .Include(i => i.InvitedByUser) 
                 .Where(i => i.GroupID == groupId);
 
-            // Áp dụng bộ lọc (Filter)
             if (query.Status.HasValue)
             {
                 queryable = queryable.Where(i => i.Status == query.Status.Value);
             }
 
-            // Áp dụng tìm kiếm (Search)
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
             {
                 var searchTerm = query.SearchTerm.Trim();
                 queryable = queryable.Where(i => i.InvitedUser != null && i.InvitedUser.FullName!.Contains(searchTerm));
             }
 
-            // Sắp xếp và chiếu sang DTO
             var pagedResult = await queryable
                 .OrderByDescending(i => i.CreatedAt)
                 .Select(i => new SentGroupInvitationDTO
@@ -315,7 +299,6 @@ public class InvitationService : IInvitationService
         if (!Guid.TryParse(_currentUser.Id, out var currentUserId))
             return ApiResponse<object>.Fail("Unauthorized", "Người dùng không hợp lệ.", 401);
 
-        // BƯỚC 1: Lấy thông tin lời mời cần thu hồi
         var invitation = await _unitOfWork.UserGroupInvitations.GetQueryable()
             .FirstOrDefaultAsync(i => i.InvitationID == invitationId && i.GroupID == groupId);
 
@@ -324,7 +307,6 @@ public class InvitationService : IInvitationService
             return ApiResponse<object>.Fail("INVITATION_NOT_FOUND", "Không tìm thấy lời mời này trong nhóm.", 404);
         }
 
-        // BƯỚC 2: Kiểm tra quyền của người thực hiện hành động
         var userMembership = await _unitOfWork.GroupMembers.GetQueryable()
             .FirstOrDefaultAsync(gm => gm.GroupID == groupId && gm.UserID == currentUserId);
 
@@ -335,14 +317,11 @@ public class InvitationService : IInvitationService
         {
             return ApiResponse<object>.Fail("Forbidden", "Bạn không có quyền thu hồi lời mời này.", 403);
         }
-
-        // BƯỚC 3: Kiểm tra trạng thái của lời mời
         if (invitation.Status != EnumInvitationStatus.Pending)
         {
             return ApiResponse<object>.Fail("INVALID_STATUS", $"Chỉ có thể thu hồi lời mời đang ở trạng thái 'Pending'. Trạng thái hiện tại: {invitation.Status}.", 400);
         }
 
-        // BƯỚC 4: Thực hiện hành động thu hồi (Xóa record)
         _unitOfWork.UserGroupInvitations.Remove(invitation);
         await _unitOfWork.SaveChangesAsync();
 

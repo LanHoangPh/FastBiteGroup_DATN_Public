@@ -120,7 +120,6 @@ public class MessageService : IMessageService
                     .Where(u => userIdsToFetch.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id);
 
-            // Lấy vai trò của tất cả người gửi đó trong nhóm (nếu là group chat)
             var senderRolesDict = new Dictionary<Guid, EnumGroupRole>();
             if (conversation.ConversationType == EnumConversationType.Group && conversation.ExplicitGroupID.HasValue && senderIds.Any())
             {
@@ -207,7 +206,6 @@ public class MessageService : IMessageService
             .Where(p => p.ConversationID == conversationId && p.UserID == senderGuid)
             .Select(p => new {
                 User = p.User,
-                // Lấy vai trò trong nhóm nếu đây là group chat
                 RoleInGroup = p.Conversation.ConversationType == EnumConversationType.Group
                     ? p.Conversation.Group.Members.Where(m => m.UserID == senderGuid).Select(m => (EnumGroupRole?)m.Role).FirstOrDefault()
                     : null
@@ -277,7 +275,7 @@ public class MessageService : IMessageService
             messageDto.CanEdit = true;  
             messageDto.CanDelete = true;
 
-            // Gán vai trò (sẽ là null nếu đây là chat 1-1)
+
             if (senderRole.HasValue)
             {
                 messageDto.SenderRoleInGroup = senderRole.Value;
@@ -325,7 +323,7 @@ public class MessageService : IMessageService
             .Select(p => p.User)
             .ToListAsync();
 
-        var senderRole = EnumGroupRole.Member; // Mặc định
+        var senderRole = EnumGroupRole.Member; 
         if (conversation.ConversationType == EnumConversationType.Group && conversation.ExplicitGroupID.HasValue && message.Sender != null)
         {
             var senderMembership = await _unitOfWork.GroupMembers.GetQueryable()
@@ -428,7 +426,6 @@ public class MessageService : IMessageService
             EnumMessageType.Audio => "Đã gửi một tin nhắn thoại",
             EnumMessageType.Poll => "Đã tạo một cuộc bình chọn",
             EnumMessageType.VideoCall => "Cuộc gọi video",
-            // Đối với tin nhắn văn bản, cắt ngắn nếu quá dài
             _ => message.Content.Length > previewLength
                  ? message.Content.Substring(0, previewLength) + "..."
                  : message.Content
@@ -488,10 +485,7 @@ public class MessageService : IMessageService
 
             await _messageRepo.UpdateOneAsync(updateFilter, updateAction);
 
-            // BƯỚC 4: Gửi sự kiện real-time qua tác vụ nền
             _backgroundJobClient.Enqueue<IMessageService>(s => s.BroadcastMessageDeletionAsync(conversationId, messageId));
-
-            // (Tùy chọn) Cập nhật lại LastMessagePreview nếu tin nhắn bị xóa là tin nhắn cuối cùng
 
             return ApiResponse<object>.Ok(null, "Thu hồi tin nhắn thành công.");
         }
@@ -505,7 +499,6 @@ public class MessageService : IMessageService
     {
         var groupName = $"conversation_{conversationId}";
         await _hubContext.Clients.Group(groupName)
-            // Gửi cả conversationId và messageId
             .SendAsync("MessageDeleted", conversationId, messageId);
 
         _logger.LogInformation("Broadcasted delete event for message {MessageId} in conversation {ConversationId}", messageId, conversationId);
@@ -699,7 +692,6 @@ public class MessageService : IMessageService
 
         var enrichedDtos = await EnrichMessageDtos(messagesFromMongo, userId, conversation);
 
-        // Kiểm tra xem có tin nhắn cũ hơn/mới hơn ở 2 đầu không
         bool hasOlder = messagesFromMongo.First().Id != enrichedDtos.First().Id || await _messageRepo.HasOlderMessagesAsync(conversationId, enrichedDtos.First().Id);
         bool hasNewer = messagesFromMongo.Last().Id != enrichedDtos.Last().Id || await _messageRepo.HasNewerMessagesAsync(conversationId, enrichedDtos.Last().Id); 
 
