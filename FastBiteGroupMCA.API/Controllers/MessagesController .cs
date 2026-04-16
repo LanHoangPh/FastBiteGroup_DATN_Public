@@ -61,6 +61,6 @@ public class MessagesController : ControllerBase
             };
         }
 
-        return NoContent(); // Trả về 204 No Content khi xóa thành công
+        return NoContent(); 
     }
 }
